@@ -23,7 +23,7 @@ public static class FooPluginAPI_Lazy
     public static TestFunc testFunc {
         get {
             if (_testFunc == null) {
-                var fn = PluginLoader.GetPlugin(pluginName).GetFunction("simple_func");
+                var fn = NativePluginLoader.GetPlugin(pluginName).GetFunction("simple_func");
                 _testFunc = Marshal.GetDelegateForFunctionPointer<TestFunc>(fn);
             }
             return _testFunc;
@@ -35,7 +35,7 @@ public static class FooPluginAPI_Lazy
     static NativePlugin plugin {
         get {
             if (_plugin == null)
-                _plugin = PluginLoader.GetPlugin(pluginName);
+                _plugin = NativePluginLoader.GetPlugin(pluginName);
             return _plugin;
         }
     }
@@ -94,7 +94,7 @@ public static class HACK
                     var type_attribute = type_attributes[0] as PluginAttr;
                     var plugin_name = type_attribute.pluginName;
 
-                    var plugin = PluginLoader.GetPlugin(plugin_name);
+                    var plugin = NativePluginLoader.GetPlugin(plugin_name);
 
                     // Loop over fields
                     var fields = type.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
