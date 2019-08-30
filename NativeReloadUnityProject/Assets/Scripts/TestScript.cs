@@ -7,9 +7,17 @@ public class TestScript : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        // #1 - PInvoke
         //var val = FooPluginAPI.test_func();
-        var lazy_val = FooPluginAPI_Lazy.testFunc();
-        Debug.Log("Value from DLL: " + lazy_val.ToString());
+
+        // #2 - Lazy load
+        //var val = FooPluginAPI_Lazy.testFunc();
+
+        // #3 - Auto load
+        HACK.LoadAll();
+        var val = FooPluginAPIAuto._testFunc();
+
+        Debug.Log("Value from DLL: " + val.ToString());
     }
 
     // Update is called once per frame
