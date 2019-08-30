@@ -41,36 +41,35 @@ public static class FooPluginAPI_Lazy
     }
 }
 
-[AttributeUsage(AttributeTargets.Class)]
-public class PluginAutoLoadAttr : System.Attribute
-{
+[AttributeUsage(AttributeTargets.Class, AllowMultiple=false, Inherited=true)]
+public class PluginAttr : System.Attribute {
     // Fields
     public string pluginName { get; private set; }
 
     // Methods
-    public PluginAutoLoadAttr(string pluginName) {
+    public PluginAttr(string pluginName) {
         this.pluginName = pluginName;
     }
 }
 
 [AttributeUsage(AttributeTargets.Field)]
-public class PluginFunctionAutoLoadAttr : System.Attribute
+public class PluginFunctionAttr : System.Attribute
 {
     // Fields
     public string functionName { get; private set; }
 
     // Methods
-    public PluginFunctionAutoLoadAttr(string functionName) {
+    public PluginFunctionAttr(string functionName) {
         this.functionName = functionName;
     }
 }
 
 
-[PluginAutoLoadAttr("cpp_example_dll")]
+[PluginAttr("cpp_example_dll")]
 public static class FooPluginAPIAuto
 {
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] public delegate int TestFunc();
-    [PluginFunctionAutoLoadAttr("simple_func")] public static TestFunc _testFunc = null;
+    [PluginFunctionAttr("simple_func")] public static TestFunc _testFunc = null;
 }
 
 public static class HACK
@@ -78,14 +77,21 @@ public static class HACK
     public static void LoadAll()
     {
         // Loop over all assemblies
+        int num_assemblies = 0;
+        int num_types = 0;
+        var asms = AppDomain.CurrentDomain.GetAssemblies();
         foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            ++num_assemblies;
+
             // Loop over all types
             foreach (var type in assembly.GetTypes())
             {
+                ++num_types;
+
                 // Get type custom attributes
-                var type_attributes = type.GetCustomAttributes(typeof(PluginAutoLoadAttr), true);
+                var type_attributes = type.GetCustomAttributes(typeof(PluginAttr), true);
                 if (type_attributes.Length > 0) {
-                    var type_attribute = type_attributes[0] as PluginAutoLoadAttr;
+                    var type_attribute = type_attributes[0] as PluginAttr;
                     var plugin_name = type_attribute.pluginName;
 
                     var plugin = PluginLoader.GetPlugin(plugin_name);
@@ -95,9 +101,9 @@ public static class HACK
                     foreach (var field in fields) {
 
                         // Get field custom attributes
-                        var field_attributes = field.GetCustomAttributes(typeof(PluginFunctionAutoLoadAttr), true);
+                        var field_attributes = field.GetCustomAttributes(typeof(PluginFunctionAttr), true);
                         if (field_attributes.Length > 0) {
-                            var field_attribute = field_attributes[0] as PluginFunctionAutoLoadAttr;
+                            var field_attribute = field_attributes[0] as PluginFunctionAttr;
                             var function_name = field_attribute.functionName;
 
                             var fn = plugin.GetFunction(function_name);
@@ -109,5 +115,8 @@ public static class HACK
                 }
             }
         }
+
+        UnityEngine.Debug.Log("Assemblies: " + num_assemblies.ToString());
+        UnityEngine.Debug.Log("Types: " + num_types.ToString());
     }
 }
