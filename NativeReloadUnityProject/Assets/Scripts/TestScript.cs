@@ -14,15 +14,8 @@ public class TestScript : MonoBehaviour
         //var val = FooPluginAPI_Lazy.testFunc();
 
         // #3 - Auto load
-        HACK.LoadAll();
         var val = FooPluginAPIAuto._testFunc();
 
         Debug.Log("Value from DLL: " + val.ToString());
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }

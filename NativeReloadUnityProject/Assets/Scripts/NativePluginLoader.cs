@@ -36,7 +36,6 @@ public class NativePluginLoader : MonoBehaviour
         get {
             if (_singleton == null) {
                 var go = new GameObject("PluginLoader");
-                DontDestroyOnLoad(go);
                 var pl = go.AddComponent<NativePluginLoader>();
                 Debug.Assert(_singleton == pl); // should be set by awake
             }
@@ -71,6 +70,9 @@ public class NativePluginLoader : MonoBehaviour
             throw new System.Exception("Created PluginLoader when one already existed");
 
         _singleton = this;
+        DontDestroyOnLoad(this.gameObject);
+
+        LoadAll();
     }
 
     void OnDestroy() {
@@ -81,10 +83,48 @@ public class NativePluginLoader : MonoBehaviour
     }
 
     void LoadAll() {
+        // Loop over all assemblies
+        var asms = AppDomain.CurrentDomain.GetAssemblies();
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            // Loop over all types
+            foreach (var type in assembly.GetTypes())
+            {
+                // Get type custom attributes
+                var type_attributes = type.GetCustomAttributes(typeof(PluginAttr), true);
+                if (type_attributes.Length > 0)
+                {
+                    var type_attribute = type_attributes[0] as PluginAttr;
+                    var plugin_name = type_attribute.pluginName;
+                    var plugin = NativePluginLoader.GetPlugin(plugin_name);
 
+                    // Loop over fields
+                    var fields = type.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                    foreach (var field in fields)
+                    {
+                        // Get field custom attributes
+                        var field_attributes = field.GetCustomAttributes(typeof(PluginFunctionAttr), true);
+                        if (field_attributes.Length > 0)
+                        {
+                            // Get field attribute
+                            var field_attribute = field_attributes[0] as PluginFunctionAttr;
+                            var function_name = field_attribute.functionName;
+
+                            // Get function pointer
+                            var fn_ptr = plugin.GetFunction(function_name);
+                            var fn_del = Marshal.GetDelegateForFunctionPointer(fn_ptr, field.FieldType);
+
+                            // Set static field value
+                            field.SetValue(null, fn_del);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
+// NativePlugin helper
 public class NativePlugin {
     const string PATH = "Assets/Plugins/";
     const string EXT = ".dll";
@@ -102,4 +142,31 @@ public class NativePlugin {
     }
 }
 
+// Attribute for Plugin APIs
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+public class PluginAttr : System.Attribute
+{
+    // Fields
+    public string pluginName { get; private set; }
+
+    // Methods
+    public PluginAttr(string pluginName)
+    {
+        this.pluginName = pluginName;
+    }
+}
+
+// Attribute for functions inside an API
+[AttributeUsage(AttributeTargets.Field)]
+public class PluginFunctionAttr : System.Attribute
+{
+    // Fields
+    public string functionName { get; private set; }
+
+    // Methods
+    public PluginFunctionAttr(string functionName)
+    {
+        this.functionName = functionName;
+    }
+}
 
