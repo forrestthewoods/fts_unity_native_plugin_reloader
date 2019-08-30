@@ -126,7 +126,10 @@ public class NativePluginLoader : MonoBehaviour
 
 // NativePlugin helper
 public class NativePlugin {
+    // TODO: Editor vs non-editor
     const string PATH = "Assets/Plugins/";
+
+    // TODO: Multi-platform
     const string EXT = ".dll";
 
     // Properties

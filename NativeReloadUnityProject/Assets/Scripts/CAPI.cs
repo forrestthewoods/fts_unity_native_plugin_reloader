@@ -2,20 +2,17 @@
 using System.Runtime.InteropServices;
 
 
-
+// Basic PInvoke
 public static class FooPluginAPI 
 {
     [DllImport("cpp_example_dll", EntryPoint = "simple_func")]
     extern static public int test_func();
 }
 
+// Lazy look-up, done manually
 public static class FooPluginAPI_Lazy
 {
     const string pluginName = "cpp_example_dll";
-
-    // TODO:
-    // Create attribute that goes on delegate with function name
-    // Create loader that goes through class and loads all delegates
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate int TestFunc();
@@ -41,8 +38,7 @@ public static class FooPluginAPI_Lazy
     }
 }
 
-
-
+// AutoLoad on start
 [PluginAttr("cpp_example_dll")]
 public static class FooPluginAPIAuto
 {
