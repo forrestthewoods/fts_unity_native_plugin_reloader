@@ -34,7 +34,7 @@ public class TestScript : MonoBehaviour
         var len = FooPluginAPI_Auto.stringLength(some_string);
         Debug.Log(string.Format("Length of [{0}] is {1}", some_string, len));
 
-        var ss = new FooPluginAPI_Auto.SimpleStruct(23, 42.5f, true);
+        var ss = new SimpleStruct(23, 42.5f, true);
         var result = FooPluginAPI_Auto.sendStruct(ref ss);
         Debug.Log(string.Format("SendStruct result [{0}]", result));
 

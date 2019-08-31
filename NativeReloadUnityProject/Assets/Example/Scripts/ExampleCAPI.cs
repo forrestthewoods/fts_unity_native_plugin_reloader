@@ -62,17 +62,17 @@ public static class FooPluginAPI_Auto
     [PluginFunctionAttr("recv_struct")]
     public static RecvStruct recvStruct = null;
     public delegate SimpleStruct RecvStruct();
+}
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct SimpleStruct {
-        public int a;
-        public float b;
-        public bool c;
-
-        public SimpleStruct(int a, float b, bool c) {
-            this.a = a;
-            this.b = b;
-            this.c = c;
-        }
+[StructLayout(LayoutKind.Sequential)]
+public struct SimpleStruct {
+    public int a;
+    public float b;
+    public bool c;
+    
+    public SimpleStruct(int a, float b, bool c) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
     }
 }
