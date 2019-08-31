@@ -40,6 +40,7 @@ public static class FooPlugin_PInvoke
 //
 // Here's an example of how to do a slightly more manual Lazy lookup
 // ------------------------------------------------------------------------
+[PluginAttr("cpp_example_dll", lazy: true)]
 public static class FooPluginAPI_Lazy
 {
     const string pluginName = "cpp_example_dll";
@@ -64,6 +65,31 @@ public static class FooPluginAPI_Lazy
             if (_plugin == null)
                 _plugin = NativePluginLoader.GetPlugin(pluginName);
             return _plugin;
+        }
+    }
+
+    static int Test()
+    {
+        return simpleFunc();
+    }
+
+    [PluginLazyFunctionAttr("cpp_example_dll", "simple_func")]
+    static LazyFn<SimpleFunc> _simpleFunc = new LazyFn<SimpleFunc>();
+    public delegate int SimpleFunc();
+    public static SimpleFunc simpleFunc { get { return _simpleFunc.fn; } } 
+
+    class LazyFn<DelegateT> {
+        DelegateT _function;
+
+        public DelegateT fn { 
+            get {
+                if (_function == null) {
+                    var attr = GetType().GetCustomAttributes(typeof(PluginLazyFunctionAttr), true)[0] as PluginLazyFunctionAttr;
+                    var fn_ptr = NativePluginLoader.GetPlugin(attr.pluginName).GetFunction(attr.functionName);
+                    _function = Marshal.GetDelegateForFunctionPointer<DelegateT>(fn_ptr);
+                }
+                return _function;
+            }
         }
     }
 }
