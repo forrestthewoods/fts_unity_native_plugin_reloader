@@ -1,15 +1,22 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
+using fts_plugin_loader;
 
+
+// ------------------------------------------------------------------------
 // Basic PInvoke
-public static class FooPluginAPI 
+// ------------------------------------------------------------------------
+public static class FooPlugin_PInvoke
 {
     [DllImport("cpp_example_dll", EntryPoint = "simple_func")]
     extern static public int test_func();
 }
 
-// Lazy look-up, done manually
+
+// ------------------------------------------------------------------------
+// (Manual) Lazy lookup
+// ------------------------------------------------------------------------
 public static class FooPluginAPI_Lazy
 {
     const string pluginName = "cpp_example_dll";
@@ -38,9 +45,13 @@ public static class FooPluginAPI_Lazy
     }
 }
 
-// AutoLoad on start
+// ------------------------------------------------------------------------
+// Auto Lookup
+//
+// Requires 'NativePluginLoader' object to exist in scene
+// ------------------------------------------------------------------------
 [PluginAttr("cpp_example_dll")]
-public static class FooPluginAPIAuto
+public static class FooPluginAPI_Auto
 {
     [PluginFunctionAttr("simple_func")] 
     public static TestFunc _testFunc = null;

@@ -8,13 +8,13 @@ public class TestScript : MonoBehaviour
     void Start()
     {
         // #1 - PInvoke
-        //var val = FooPluginAPI.test_func();
+        //var val = FooPlugin_PInvoke.test_func();
 
         // #2 - Lazy load
         //var val = FooPluginAPI_Lazy.testFunc();
 
         // #3 - Auto load
-        var val = FooPluginAPIAuto._testFunc();
+        var val = FooPluginAPI_Auto._testFunc();
 
         Debug.Log("Value from DLL: " + val.ToString());
     }
