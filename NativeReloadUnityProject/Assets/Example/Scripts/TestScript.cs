@@ -19,7 +19,6 @@ public class TestScript : MonoBehaviour
         //Debug.Log("Value from DLL: " + val.ToString());
 
         CallAutoAPI();
-        CallLazyAPI();
     }
 
     void CallAutoAPI() {
@@ -42,12 +41,5 @@ public class TestScript : MonoBehaviour
         ss = FooPluginAPI_Auto.recvStruct();
         result = FooPluginAPI_Auto.sendStruct(ref ss);
         Debug.Log(string.Format("RecvStruct result [{0}]", result));
-    }
-
-    void CallLazyAPI() {
-        Debug.Log("Calling Lazy API");
-
-        var val = FooPluginAPI_Lazy.simpleFunc();
-        Debug.Log(string.Format("simple_func: {0}", val));
     }
 }

@@ -114,7 +114,7 @@ namespace fts_plugin_loader
                         Debug.Assert(type_attributes.Length == 1); // should not be possible
 
                         var type_attribute = type_attributes[0] as PluginAttr;
-                        if (type_attribute.lazy)
+                        if (type_attribute.auto == false)
                             continue;
 
                         var plugin_name = type_attribute.pluginName;
@@ -181,12 +181,12 @@ namespace fts_plugin_loader
     {
         // Fields
         public string pluginName { get; private set; }
-        public bool lazy { get; private set; }
+        public bool auto { get; private set; }
 
         // Methods
-        public PluginAttr(string pluginName, bool lazy = false) {
+        public PluginAttr(string pluginName, bool auto = true) {
             this.pluginName = pluginName;
-            this.lazy = lazy;
+            this.auto = auto;
         }
     }
 
@@ -201,24 +201,6 @@ namespace fts_plugin_loader
 
         // Methods
         public PluginFunctionAttr(string functionName) {
-            this.functionName = functionName;
-        }
-    }
-
-    // ------------------------------------------------------------------------
-    // Attribute for functions inside a Plugin API
-    // ------------------------------------------------------------------------
-    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
-    public class PluginLazyFunctionAttr : System.Attribute
-    {
-        // Fields
-        public string pluginName { get; private set; }
-        public string functionName { get; private set; }
-
-        // Methods
-        public PluginLazyFunctionAttr(string pluginName, string functionName)
-        {
-            this.pluginName = pluginName;
             this.functionName = functionName;
         }
     }
