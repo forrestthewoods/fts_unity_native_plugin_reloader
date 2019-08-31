@@ -40,7 +40,10 @@ namespace fts_plugin_loader
 
         // Private fields
         [UnityEngine.SerializeField]
-        Dictionary<string, NativePlugin> _loadedPlugins = new Dictionary<string, NativePlugin>();
+        NativePlugins _loadedPlugins = new NativePlugins();
+
+        [UnityEngine.SerializeField]
+        List<string> _serializedLoadedPlugins = new List<string>();
 
         // Static Properties
         static NativePluginLoader singleton {
@@ -72,6 +75,7 @@ namespace fts_plugin_loader
 
                 result = new NativePlugin(pluginHandle);
                 pl._loadedPlugins.Add(pluginName, result);
+                pl._serializedLoadedPlugins.Add(pluginName);
             }
 
             return result;
@@ -96,12 +100,13 @@ namespace fts_plugin_loader
         static int pluginCount = 0;
 
         void OnDestroy() {
-            Debug.Log(string.Format("OnDestory: [{0}] [{1}]", pluginCount, _loadedPlugins.Count));
+            Debug.Log(string.Format("OnDestory: [{0}] [{1}] [{2}]", pluginCount, _loadedPlugins.Count, _serializedLoadedPlugins.Count));
 
             // Free all loaded libraries
             foreach(var kvp in _loadedPlugins) {
                 // TODO: _loadedPlugins may be empty if script recompiled while running
                 // Need to serialize _loadedPlugins but ONLY during editor script reload
+                // Maybe use ISerializationCallbackReceiver?
                 Debug.Log("Freeing " + kvp.Key);
                 SystemLibrary.FreeLibrary(kvp.Value.handle);
             }
@@ -192,6 +197,10 @@ namespace fts_plugin_loader
             return SystemLibrary.GetProcAddress(handle, functionName);
         }
     }
+
+    // Helper that exists because Unity can't serialize a generic dictionary
+    [System.Serializable]
+    class NativePlugins : Dictionary<string, NativePlugin> { }
 
     // ------------------------------------------------------------------------
     // Attribute for Plugin APIs
