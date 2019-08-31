@@ -29,7 +29,7 @@ namespace fts_plugin_loader
     // Singleton class to help with loading and unloading of native plugins
     // ------------------------------------------------------------------------
     [System.Serializable]
-    public class NativePluginLoader : MonoBehaviour
+    public class NativePluginLoader : MonoBehaviour, ISerializationCallbackReceiver
     {
         // Constants
         const string PATH = "Assets/Plugins/"; // TODO: Handle non-editor builds
@@ -39,11 +39,7 @@ namespace fts_plugin_loader
         static NativePluginLoader _singleton;
 
         // Private fields
-        [UnityEngine.SerializeField]
-        NativePlugins _loadedPlugins = new NativePlugins();
-
-        [UnityEngine.SerializeField]
-        List<string> _serializedLoadedPlugins = new List<string>();
+        Dictionary<string, NativePlugin> _loadedPlugins = new Dictionary<string, NativePlugin>();
 
         // Static Properties
         static NativePluginLoader singleton {
@@ -69,13 +65,11 @@ namespace fts_plugin_loader
             if (!pl._loadedPlugins.TryGetValue(pluginName, out result)) {
                 var pluginPath = PATH + pluginName + EXT;
                 var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
-                pluginCount += 1;
                 if (pluginHandle == IntPtr.Zero)
                     throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
 
                 result = new NativePlugin(pluginHandle);
                 pl._loadedPlugins.Add(pluginName, result);
-                pl._serializedLoadedPlugins.Add(pluginName);
             }
 
             return result;
@@ -83,7 +77,10 @@ namespace fts_plugin_loader
 
         // Methods
         void Awake() {
-            if (_singleton != null) { 
+            Debug.Log("Awake");
+
+            if (_singleton != null)
+            {
                 Debug.LogError(
                     string.Format("Created multiple NativePluginLoader objects. Destroying duplicate created on GameObject [{0}]",
                     this.gameObject.name));
@@ -97,13 +94,11 @@ namespace fts_plugin_loader
             LoadAll();
         }
 
-        static int pluginCount = 0;
-
         void OnDestroy() {
-            Debug.Log(string.Format("OnDestory: [{0}] [{1}] [{2}]", pluginCount, _loadedPlugins.Count, _serializedLoadedPlugins.Count));
+            Debug.Log("OnDestroy");
 
             // Free all loaded libraries
-            foreach(var kvp in _loadedPlugins) {
+            foreach (var kvp in _loadedPlugins) {
                 // TODO: _loadedPlugins may be empty if script recompiled while running
                 // Need to serialize _loadedPlugins but ONLY during editor script reload
                 // Maybe use ISerializationCallbackReceiver?
@@ -175,6 +170,36 @@ namespace fts_plugin_loader
                 }
             }
         }
+
+
+        // ISerializationCallbackReceiver
+        List<string> _serializeKeys = new List<string>();
+        List<NativePlugin> _serializeValues = new List<NativePlugin>();
+
+        void ISerializationCallbackReceiver.OnBeforeSerialize() {
+            Debug.Log("OnBeforeSerialize");
+
+            _serializeKeys.Clear();
+            _serializeValues.Clear();
+
+            foreach (var kvp in _loadedPlugins) {
+                _serializeKeys.Add(kvp.Key);
+                _serializeValues.Add(kvp.Value);
+            }
+        }
+
+        void ISerializationCallbackReceiver.OnAfterDeserialize()  {
+            Debug.Log("OnAfterDeserialize");
+            _loadedPlugins.Clear();
+
+            Debug.Assert(_serializeKeys.Count == _serializeValues.Count);
+            for (int i = 0; i < _serializeKeys.Count; ++i) {
+                _loadedPlugins.Add(_serializeKeys[i], _serializeValues[i]);
+            }
+
+            _serializeKeys.Clear();
+            _serializeValues.Clear();
+        }
     }
 
 
@@ -182,8 +207,7 @@ namespace fts_plugin_loader
     // Small wrapper around NativePlugin helper
     // ------------------------------------------------------------------------
     [System.Serializable]
-    public class NativePlugin
-    {
+    public class NativePlugin {
         // Properties
         [UnityEngine.SerializeField] IntPtr _handle;
         public IntPtr handle { get { return _handle; } }
@@ -197,10 +221,6 @@ namespace fts_plugin_loader
             return SystemLibrary.GetProcAddress(handle, functionName);
         }
     }
-
-    // Helper that exists because Unity can't serialize a generic dictionary
-    [System.Serializable]
-    class NativePlugins : Dictionary<string, NativePlugin> { }
 
     // ------------------------------------------------------------------------
     // Attribute for Plugin APIs
