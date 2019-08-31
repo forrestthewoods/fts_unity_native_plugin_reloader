@@ -42,4 +42,6 @@ public class TestScript : MonoBehaviour
         result = FooPluginAPI_Auto.sendStruct(ref ss);
         Debug.Log(string.Format("RecvStruct result [{0}]", result));
     }
+
+    // TODO: UnityEditor button to decipher reload behavior
 }
