@@ -133,10 +133,16 @@ namespace fts_plugin_loader
 
                                 // Get function pointer
                                 var fn_ptr = plugin.GetFunction(function_name);
-                                var fn_del = Marshal.GetDelegateForFunctionPointer(fn_ptr, field.FieldType);
 
-                                // Set static field value
-                                field.SetValue(null, fn_del);
+                                if (fn_ptr != IntPtr.Zero) {
+                                    // Get delegate pointer
+                                    var fn_del = Marshal.GetDelegateForFunctionPointer(fn_ptr, field.FieldType);
+
+                                    // Set static field value
+                                    field.SetValue(null, fn_del);
+                                } else {
+                                    Debug.LogError(string.Format("Failed to find function [{0}] in plugin [{1}]", function_name, plugin_name));
+                                }
                             }
                         }
                     }
