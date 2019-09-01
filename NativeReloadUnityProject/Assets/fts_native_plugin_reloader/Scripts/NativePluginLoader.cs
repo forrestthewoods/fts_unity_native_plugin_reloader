@@ -42,7 +42,7 @@ namespace fts
         static NativePluginLoader _singleton;
 
         // Private fields
-        Dictionary<string, NativePlugin> _loadedPlugins = new Dictionary<string, NativePlugin>();
+        Dictionary<string, IntPtr> _loadedPlugins = new Dictionary<string, IntPtr>();
         string _path;
 
         // Static Properties
@@ -84,7 +84,7 @@ namespace fts
         void UnloadAll() {
             // Free all loaded libraries
             foreach (var kvp in _loadedPlugins) {
-                bool result = SystemLibrary.FreeLibrary(kvp.Value.handle);
+                bool result = SystemLibrary.FreeLibrary(kvp.Value);
             }
             _loadedPlugins.Clear();
         }
@@ -109,54 +109,45 @@ namespace fts
                         var typeAttribute = typeAttributes[0] as PluginAttr;
 
                         var pluginName = typeAttribute.pluginName;
-                        NativePlugin plugin = null;
-                        if (!_loadedPlugins.TryGetValue(pluginName, out plugin)) {
+                        IntPtr pluginHandle = IntPtr.Zero;
+                        if (!_loadedPlugins.TryGetValue(pluginName, out pluginHandle)) {
                             var pluginPath = _path + pluginName + EXT;
-                            var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
+                            pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
                             if (pluginHandle == IntPtr.Zero)
                                 throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
 
-                            plugin = new NativePlugin(type, pluginHandle, pluginName);
-                            _loadedPlugins.Add(pluginName, plugin);
+                            _loadedPlugins.Add(pluginName, pluginHandle);
                         }
 
-                        LoadOne(plugin);
+                        // Loop over fields in type
+                        var fields = type.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                        foreach (var field in fields) {
+                            // Get custom attributes for field
+                            var fieldAttributes = field.GetCustomAttributes(typeof(PluginFunctionAttr), true);
+                            if (fieldAttributes.Length > 0) {
+                                Debug.Assert(fieldAttributes.Length == 1); // should not be possible
+
+                                // Get PluginFunctionAttr attribute
+                                var fieldAttribute = fieldAttributes[0] as PluginFunctionAttr;
+                                var functionName = fieldAttribute.functionName;
+
+                                // Get function pointer
+                                var fnPtr = SystemLibrary.GetProcAddress(pluginHandle, functionName);
+                                if (fnPtr == IntPtr.Zero) {
+                                    Debug.LogError(string.Format("Failed to find function [{0}] in plugin [{1}]. Err: [{2}]", functionName, pluginName, SystemLibrary.GetLastError()));
+                                    continue;
+                                }
+
+                                // Get delegate pointer
+                                var fnDelegate = Marshal.GetDelegateForFunctionPointer(fnPtr, field.FieldType);
+
+                                // Set static field value
+                                field.SetValue(null, fnDelegate);
+                            }
+                        }
                     }
                 }
             }            
-        }
-
-        void LoadOne(NativePlugin plugin) {
-            Type type = plugin.type;
-
-            // Loop over fields in type
-            var fields = type.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-            foreach (var field in fields)
-            {
-                // Get custom attributes for field
-                var fieldAttributes = field.GetCustomAttributes(typeof(PluginFunctionAttr), true);
-                if (fieldAttributes.Length > 0)
-                {
-                    Debug.Assert(fieldAttributes.Length == 1); // should not be possible
-
-                    // Get PluginFunctionAttr attribute
-                    var fieldAttribute = fieldAttributes[0] as PluginFunctionAttr;
-                    var functionName = fieldAttribute.functionName;
-
-                    // Get function pointer
-                    var fnPtr = plugin.GetFunction(functionName);
-                    if (fnPtr == IntPtr.Zero) {
-                        Debug.LogError(string.Format("Failed to find function [{0}] in plugin [{1}]. Err: [{2}]", functionName, plugin.name, SystemLibrary.GetLastError()));
-                        continue;
-                    }
-
-                    // Get delegate pointer
-                    var fnDelegate = Marshal.GetDelegateForFunctionPointer(fnPtr, field.FieldType);
-
-                    // Set static field value
-                    field.SetValue(null, fnDelegate);
-                }
-            }
         }
 
 
@@ -178,44 +169,10 @@ namespace fts
                 _reload = false;
             }
         }
+
+        void Test() { }
     }
 
-
-    // ------------------------------------------------------------------------
-    // Small wrapper around NativePlugin helper
-    // ------------------------------------------------------------------------
-    // TODO: Delete?
-    public class NativePlugin {
-        // Private Fields
-        IntPtr _handle;
-        string _typeName;
-        string _name;
-        Type _type;
-
-        // Properties
-        public IntPtr handle { get { return _handle; } }
-        public string name { get { return _name; } }
-        public Type type {
-            get {
-                if (_type == null)
-                    _type = Type.GetType(_typeName);
-                return _type;
-            }
-        }
-
-        // Methods
-        public NativePlugin(Type type, IntPtr handle, string name) {
-            this._typeName = type.Name;
-            this._handle = handle;
-            this._name = name;
-        }
-
-        public IntPtr GetFunction(string functionName) {
-            return SystemLibrary.GetProcAddress(handle, functionName);
-        }
-
-        //void test() { }
-    }
 
     // ------------------------------------------------------------------------
     // Attribute for Plugin APIs
