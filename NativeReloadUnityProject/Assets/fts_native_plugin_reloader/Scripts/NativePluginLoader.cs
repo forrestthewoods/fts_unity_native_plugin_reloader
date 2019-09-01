@@ -155,22 +155,20 @@ namespace fts
         // Properly support reload of native assemblies requires extra work.
         // However the following code will re-fixup delegates.
         // More importantly, it prevents a dangling DLL which results in a mandatory Editor reboot
-        bool _reload = false;
+        bool _reloadAfterDeserialize = false;
         void ISerializationCallbackReceiver.OnBeforeSerialize() {
             if (_loadedPlugins.Count > 0) {
                 UnloadAll();
-                _reload = true;
+                _reloadAfterDeserialize = true;
             }
         }
 
         void ISerializationCallbackReceiver.OnAfterDeserialize()  {
-            if (_reload) { 
+            if (_reloadAfterDeserialize) { 
                 LoadAll();
-                _reload = false;
+                _reloadAfterDeserialize = false;
             }
         }
-
-        void Test() { }
     }
 
 
