@@ -102,8 +102,8 @@ namespace fts
             // TODO: Could loop over just Assembly-CSharp.dll in most cases?
 
             // Loop over all assemblies
-            var asms = AppDomain.CurrentDomain.GetAssemblies();
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var assembly in assemblies) {
                 // Loop over all types
                 foreach (var type in assembly.GetTypes()) {
                     // Get custom attributes for type
