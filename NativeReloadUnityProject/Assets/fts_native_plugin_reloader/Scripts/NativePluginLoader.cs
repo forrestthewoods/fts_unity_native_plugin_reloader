@@ -81,8 +81,9 @@ namespace fts
             _singleton = null;
         }
 
-        void UnloadAll() {
-            // Free all loaded libraries
+        // Free all loaded libraries
+        void UnloadAll()
+        {
             foreach (var kvp in _loadedPlugins) {
                 bool result = SystemLibrary.FreeLibrary(kvp.Value);
             }
@@ -92,8 +93,7 @@ namespace fts
         // Load all plugins with 'PluginAttr'
         // Load all functions with 'PluginFunctionAttr'
         void LoadAll() {
-            // TODO: Don't iterate all assemblies and all types
-            // TODO: Could this loop over just Assembly-CSharp.dll?
+            // TODO: Could loop over just Assembly-CSharp.dll in most cases?
 
             // Loop over all assemblies
             var asms = AppDomain.CurrentDomain.GetAssemblies();
