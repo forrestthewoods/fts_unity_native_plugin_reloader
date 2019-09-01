@@ -59,8 +59,6 @@ namespace fts_plugin_loader
 
         // Methods
         void Awake() {
-            Debug.Log("Awake");
-
             if (_singleton != null)
             {
                 Debug.LogError(
@@ -77,21 +75,14 @@ namespace fts_plugin_loader
         }
 
         void OnDestroy() {
-            Debug.Log("OnDestroy");
             UnloadAll();
             _singleton = null;
         }
 
         void UnloadAll() {
             // Free all loaded libraries
-            foreach (var kvp in _loadedPlugins)
-            {
-                // TODO: _loadedPlugins may be empty if script recompiled while running
-                // Need to serialize _loadedPlugins but ONLY during editor script reload
-                // Maybe use ISerializationCallbackReceiver?
-                Debug.Log("Freeing " + kvp.Key);
+            foreach (var kvp in _loadedPlugins) {
                 bool result = SystemLibrary.FreeLibrary(kvp.Value.handle);
-                Debug.Log(string.Format("Freeing [{0}] - Result: [{1}]", kvp.Key, result));
             }
             _loadedPlugins.Clear();
         }
@@ -119,7 +110,6 @@ namespace fts_plugin_loader
                         NativePlugin plugin = null;
                         if (!_loadedPlugins.TryGetValue(pluginName, out plugin)) {
                             var pluginPath = PATH + pluginName + EXT;
-                            Debug.Log(string.Format("Loading: {0}", pluginName));
                             var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
                             if (pluginHandle == IntPtr.Zero)
                                 throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
@@ -192,12 +182,12 @@ namespace fts_plugin_loader
     // ------------------------------------------------------------------------
     // Small wrapper around NativePlugin helper
     // ------------------------------------------------------------------------
-    [System.Serializable]
+    // TODO: Delete?
     public class NativePlugin {
-        // Fields
-        [SerializeField] IntPtr _handle;
-        [SerializeField] string _typeName;
-        [SerializeField] string _name;
+        // Private Fields
+        IntPtr _handle;
+        string _typeName;
+        string _name;
         Type _type;
 
         // Properties
@@ -223,6 +213,7 @@ namespace fts_plugin_loader
         }
     }
 
+
     // ------------------------------------------------------------------------
     // Attribute for Plugin APIs
     // ------------------------------------------------------------------------
@@ -237,6 +228,7 @@ namespace fts_plugin_loader
             this.pluginName = pluginName;
         }
     }
+
 
     // ------------------------------------------------------------------------
     // Attribute for functions inside a Plugin API
