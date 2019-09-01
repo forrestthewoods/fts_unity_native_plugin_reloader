@@ -2,6 +2,8 @@
 
 fts_unity_native_reload is a single C# file that helps Unity auto-reload native plugins.
 
+The only file you need is [NativePluginLoader.cs](NativeReloadUnityProject/Assets/fts_native_plugin_reloader/Scripts/NativePluginLoader.cs). The rest of the repository is just example usage.
+
 ## The Problem
 Unity doesn't unload DLLs when using [PInvoke](https://docs.microsoft.com/en-us/cpp/dotnet/how-to-call-native-dlls-from-managed-code-using-pinvoke?view=vs-2019). This makes developing [Native Plugins](https://docs.unity3d.com/Manual/NativePlugins.html) a huge pain in the ass. Everytime you want to update the DLL you need to close the Unity Editor or else you get a "file in use" error.
 
