@@ -22,6 +22,9 @@ namespace fts_plugin_loader
 
         [DllImport("kernel32")]
         static public extern IntPtr GetProcAddress(IntPtr hModule, string procedureName);
+
+        [DllImport("kernel32.dll")]
+        static public extern uint GetLastError();
     }
 
 
@@ -54,28 +57,6 @@ namespace fts_plugin_loader
             }
         }
 
-        // Static Methods
-        static NativePlugin GetPlugin(string pluginName)
-        {
-            // Get singleton
-            var pl = NativePluginLoader.singleton;
-
-            // Get or load plugin
-            NativePlugin result = null;
-            if (!pl._loadedPlugins.TryGetValue(pluginName, out result)) {
-                var pluginPath = PATH + pluginName + EXT;
-                Debug.Log(string.Format("Loading: {0}", pluginName));
-                var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
-                if (pluginHandle == IntPtr.Zero)
-                    throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
-
-                result = new NativePlugin(pluginHandle);
-                pl._loadedPlugins.Add(pluginName, result);
-            }
-
-            return result;
-        }
-
         // Methods
         void Awake() {
             Debug.Log("Awake");
@@ -93,21 +74,12 @@ namespace fts_plugin_loader
             DontDestroyOnLoad(this.gameObject);
 
             LoadAll();
-            this.enabled = false;
         }
 
         void OnDestroy() {
             Debug.Log("OnDestroy");
             UnloadAll();
             _singleton = null;
-        }
-
-        void Update() {
-            if (_needsReload) {
-                LoadAll();
-                _needsReload = false;
-            }
-            this.enabled = false;
         }
 
         void UnloadAll() {
@@ -135,85 +107,84 @@ namespace fts_plugin_loader
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()) {
                 // Loop over all types
                 foreach (var type in assembly.GetTypes()) {
-                    LoadPlugin(type, true);
+                    // Get custom attributes for type
+                    var typeAttributes = type.GetCustomAttributes(typeof(PluginAttr), true);
+                    if (typeAttributes.Length > 0)
+                    {
+                        Debug.Assert(typeAttributes.Length == 1); // should not be possible
+
+                        var typeAttribute = typeAttributes[0] as PluginAttr;
+
+                        var pluginName = typeAttribute.pluginName;
+                        NativePlugin plugin = null;
+                        if (!_loadedPlugins.TryGetValue(pluginName, out plugin)) {
+                            var pluginPath = PATH + pluginName + EXT;
+                            Debug.Log(string.Format("Loading: {0}", pluginName));
+                            var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
+                            if (pluginHandle == IntPtr.Zero)
+                                throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
+
+                            plugin = new NativePlugin(type, pluginHandle, pluginName);
+                            _loadedPlugins.Add(pluginName, plugin);
+                        }
+
+                        LoadOne(plugin);
+                    }
                 }
             }            
         }
 
-        // Public LoadPlugin function for explicit loads
-        public void LoadPlugin(Type type) {
-            LoadPlugin(type, auto: false);
-        }
+        void LoadOne(NativePlugin plugin) {
+            Type type = plugin.type;
 
-        void LoadPlugin(Type pluginType, bool auto) {
-            // Get custom attributes for type
-            var typeAttributes = pluginType.GetCustomAttributes(typeof(PluginAttr), true);
-            if (typeAttributes.Length > 0) {
-                Debug.Assert(typeAttributes.Length == 1); // should not be possible
+            // Loop over fields in type
+            var fields = type.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            foreach (var field in fields)
+            {
+                // Get custom attributes for field
+                var fieldAttributes = field.GetCustomAttributes(typeof(PluginFunctionAttr), true);
+                if (fieldAttributes.Length > 0)
+                {
+                    Debug.Assert(fieldAttributes.Length == 1); // should not be possible
 
-                var typeAttribute = typeAttributes[0] as PluginAttr;
-                if (auto && typeAttribute.auto == false)
-                    return;
+                    // Get PluginFunctionAttr attribute
+                    var fieldAttribute = fieldAttributes[0] as PluginFunctionAttr;
+                    var functionName = fieldAttribute.functionName;
 
-                var pluginName = typeAttribute.pluginName;
-                var plugin = NativePluginLoader.GetPlugin(pluginName);
-
-                // Loop over fields in type
-                var fields = pluginType.GetFields(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-                foreach (var field in fields) {
-                    // Get custom attributes for field
-                    var fieldAttributes = field.GetCustomAttributes(typeof(PluginFunctionAttr), true);
-                    if (fieldAttributes.Length > 0) {
-                        Debug.Assert(fieldAttributes.Length == 1); // should not be possible
-
-                        // Get PluginFunctionAttr attribute
-                        var fieldAttribute = fieldAttributes[0] as PluginFunctionAttr;
-                        var functionName = fieldAttribute.functionName;
-
-                        // Get function pointer
-                        var fnPtr = plugin.GetFunction(functionName);
-
-                        if (fnPtr != IntPtr.Zero) {
-                            // Get delegate pointer
-                            var fnDelegate = Marshal.GetDelegateForFunctionPointer(fnPtr, field.FieldType);
-
-                            // Set static field value
-                            field.SetValue(null, fnDelegate);
-                        } else {
-                            Debug.LogError(string.Format("Failed to find function [{0}] in plugin [{1}]", functionName, pluginName));
-                        }
+                    // Get function pointer
+                    var fnPtr = plugin.GetFunction(functionName);
+                    if (fnPtr == IntPtr.Zero) {
+                        Debug.LogError(string.Format("Failed to find function [{0}] in plugin [{1}]. Err: [{2}]", functionName, plugin.name, SystemLibrary.GetLastError()));
+                        continue;
                     }
+
+                    // Get delegate pointer
+                    var fnDelegate = Marshal.GetDelegateForFunctionPointer(fnPtr, field.FieldType);
+
+                    // Set static field value
+                    field.SetValue(null, fnDelegate);
                 }
             }
         }
 
-        // ISerializationCallbackReceiver
-        bool _needsReload = false;
 
+        // It is *strongly* recommended to set Editor->Preferences->Script Changes While Playing = Recompile After Finished Playing
+        // Properly support reload of native assemblies requires extra work.
+        // However the following code will re-fixup delegates.
+        // More importantly, it prevents a dangling DLL which results in a mandatory Editor reboot
+        bool _reload = false;
         void ISerializationCallbackReceiver.OnBeforeSerialize() {
-            Debug.Log("OnBeforeSerialize");
-
             if (_loadedPlugins.Count > 0) {
                 UnloadAll();
-                _needsReload = true;
-                this.enabled = true;
+                _reload = true;
             }
         }
 
         void ISerializationCallbackReceiver.OnAfterDeserialize()  {
-            Debug.Log("OnAfterDeserialize");
-
-            /*
-            _loadedPlugins.Clear();
-
-            Debug.Assert(_serializeKeys.Count == _serializeValues.Count);
-            for (int i = 0; i < _serializeKeys.Count; ++i) {
-                _loadedPlugins.Add(_serializeKeys[i], _serializeValues[i]);
+            if (_reload) { 
+                LoadAll();
+                _reload = false;
             }
-
-            _serializeKeys.Clear();
-            _serializeValues.Clear();
-            */
         }
     }
 
@@ -223,13 +194,28 @@ namespace fts_plugin_loader
     // ------------------------------------------------------------------------
     [System.Serializable]
     public class NativePlugin {
+        // Fields
+        [SerializeField] IntPtr _handle;
+        [SerializeField] string _typeName;
+        [SerializeField] string _name;
+        Type _type;
+
         // Properties
-        [UnityEngine.SerializeField] IntPtr _handle;
         public IntPtr handle { get { return _handle; } }
+        public string name { get { return _name; } }
+        public Type type {
+            get {
+                if (_type == null)
+                    _type = Type.GetType(_typeName);
+                return _type;
+            }
+        }
 
         // Methods
-        public NativePlugin(IntPtr handle) {
+        public NativePlugin(Type type, IntPtr handle, string name) {
+            this._typeName = type.Name;
             this._handle = handle;
+            this._name = name;
         }
 
         public IntPtr GetFunction(string functionName) {
@@ -245,12 +231,10 @@ namespace fts_plugin_loader
     {
         // Fields
         public string pluginName { get; private set; }
-        public bool auto { get; private set; }
 
         // Methods
-        public PluginAttr(string pluginName, bool auto = true) {
+        public PluginAttr(string pluginName) {
             this.pluginName = pluginName;
-            this.auto = auto;
         }
     }
 
