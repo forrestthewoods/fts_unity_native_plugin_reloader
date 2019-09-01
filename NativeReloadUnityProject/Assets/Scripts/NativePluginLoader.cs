@@ -55,7 +55,7 @@ namespace fts_plugin_loader
         }
 
         // Static Methods
-        public static NativePlugin GetPlugin(string pluginName)
+        static NativePlugin GetPlugin(string pluginName)
         {
             // Get singleton
             var pl = NativePluginLoader.singleton;
@@ -64,6 +64,7 @@ namespace fts_plugin_loader
             NativePlugin result = null;
             if (!pl._loadedPlugins.TryGetValue(pluginName, out result)) {
                 var pluginPath = PATH + pluginName + EXT;
+                Debug.Log(string.Format("Loading: {0}", pluginName));
                 var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
                 if (pluginHandle == IntPtr.Zero)
                     throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
@@ -92,20 +93,35 @@ namespace fts_plugin_loader
             DontDestroyOnLoad(this.gameObject);
 
             LoadAll();
+            this.enabled = false;
         }
 
         void OnDestroy() {
             Debug.Log("OnDestroy");
+            UnloadAll();
+            _singleton = null;
+        }
 
+        void Update() {
+            if (_needsReload) {
+                LoadAll();
+                _needsReload = false;
+            }
+            this.enabled = false;
+        }
+
+        void UnloadAll() {
             // Free all loaded libraries
-            foreach (var kvp in _loadedPlugins) {
+            foreach (var kvp in _loadedPlugins)
+            {
                 // TODO: _loadedPlugins may be empty if script recompiled while running
                 // Need to serialize _loadedPlugins but ONLY during editor script reload
                 // Maybe use ISerializationCallbackReceiver?
                 Debug.Log("Freeing " + kvp.Key);
-                SystemLibrary.FreeLibrary(kvp.Value.handle);
+                bool result = SystemLibrary.FreeLibrary(kvp.Value.handle);
+                Debug.Log(string.Format("Freeing [{0}] - Result: [{1}]", kvp.Key, result));
             }
-            _singleton = null;
+            _loadedPlugins.Clear();
         }
 
         // Load all plugins with 'PluginAttr'
@@ -171,25 +187,23 @@ namespace fts_plugin_loader
             }
         }
 
-
         // ISerializationCallbackReceiver
-        List<string> _serializeKeys = new List<string>();
-        List<NativePlugin> _serializeValues = new List<NativePlugin>();
+        bool _needsReload = false;
 
         void ISerializationCallbackReceiver.OnBeforeSerialize() {
             Debug.Log("OnBeforeSerialize");
 
-            _serializeKeys.Clear();
-            _serializeValues.Clear();
-
-            foreach (var kvp in _loadedPlugins) {
-                _serializeKeys.Add(kvp.Key);
-                _serializeValues.Add(kvp.Value);
+            if (_loadedPlugins.Count > 0) {
+                UnloadAll();
+                _needsReload = true;
+                this.enabled = true;
             }
         }
 
         void ISerializationCallbackReceiver.OnAfterDeserialize()  {
             Debug.Log("OnAfterDeserialize");
+
+            /*
             _loadedPlugins.Clear();
 
             Debug.Assert(_serializeKeys.Count == _serializeValues.Count);
@@ -199,6 +213,7 @@ namespace fts_plugin_loader
 
             _serializeKeys.Clear();
             _serializeValues.Clear();
+            */
         }
     }
 

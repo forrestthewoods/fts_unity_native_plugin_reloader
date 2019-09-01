@@ -21,7 +21,7 @@ public class TestScript : MonoBehaviour
         CallAutoAPI();
     }
 
-    void CallAutoAPI() {
+    public void CallAutoAPI() {
         Debug.Log("Calling Auto API");
 
         var val = FooPluginAPI_Auto.simpleFunc();
@@ -42,6 +42,19 @@ public class TestScript : MonoBehaviour
         result = FooPluginAPI_Auto.sendStruct(ref ss);
         Debug.Log(string.Format("RecvStruct result [{0}]", result));
     }
-
-    // TODO: UnityEditor button to decipher reload behavior
 }
+
+// TODO: UnityEditor button to decipher reload behavior
+#if UNITY_EDITOR
+[UnityEditor.CustomEditor(typeof(TestScript))]
+class DecalMeshHelperEditor : UnityEditor.Editor
+{
+    public override void OnInspectorGUI()
+    {
+        var ts = target as TestScript;
+
+        if (GUILayout.Button("Call Auto API"))
+            ts.CallAutoAPI();
+    }
+}
+#endif
