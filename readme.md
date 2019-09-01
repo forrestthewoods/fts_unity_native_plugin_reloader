@@ -21,7 +21,8 @@ extern "C" {
 The standard way to call this NativePlugin is:
 
 ``` Csharp
-// The "old" crappy PInvoke
+// C#
+// Old and busted PInvoke
 public static class FooPlugin_PInvoke {
     [DllImport("cpp_example_dll", EntryPoint = "sum")]
     extern static public float sum(float a, float b);
@@ -31,6 +32,8 @@ public static class FooPlugin_PInvoke {
 My new and improved way:
 
 ``` Csharp
+// C#
+// New hotness
 [PluginAttr("cpp_example_dll")]
 public static class FooPlugin
 {
@@ -60,4 +63,4 @@ The syntax for calling the delegates is identical to using PInvoke. If performan
 This currently only supports Windows. Supporting other platforms should be trivial. Pull requests welcome.
 
 ## License
-Entire repo is dual-licensed under both MIT License and Unlicense.
+The entire repo is dual-licensed under both MIT License and Unlicense.
