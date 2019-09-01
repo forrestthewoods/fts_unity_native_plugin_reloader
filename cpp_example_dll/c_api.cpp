@@ -5,7 +5,7 @@
 // #include <windows.h>
 
 int simple_func() {
-	return 34;
+	return 42;
 }
 
 float sum(float a, float b) {

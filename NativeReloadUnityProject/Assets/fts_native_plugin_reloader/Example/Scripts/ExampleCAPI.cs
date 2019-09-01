@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-using fts_plugin_loader;
+using fts;
 
 // ------------------------------------------------------------------------
 // Example C API defined in my_cool_plugin.h

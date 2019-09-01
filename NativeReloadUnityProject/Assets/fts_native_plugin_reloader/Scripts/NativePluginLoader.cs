@@ -4,8 +4,9 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace fts_plugin_loader
+namespace fts
 {
+
     // ------------------------------------------------------------------------
     // Native API for loading/unloading NativePlugins
     //
@@ -35,7 +36,6 @@ namespace fts_plugin_loader
     public class NativePluginLoader : MonoBehaviour, ISerializationCallbackReceiver
     {
         // Constants
-        const string PATH = "Assets/Plugins/"; // TODO: Handle non-editor builds
         const string EXT = ".dll"; // TODO: Handle different platforms
 
         // Static fields
@@ -43,6 +43,7 @@ namespace fts_plugin_loader
 
         // Private fields
         Dictionary<string, NativePlugin> _loadedPlugins = new Dictionary<string, NativePlugin>();
+        string _path;
 
         // Static Properties
         static NativePluginLoader singleton {
@@ -70,6 +71,7 @@ namespace fts_plugin_loader
 
             _singleton = this;
             DontDestroyOnLoad(this.gameObject);
+            _path = Application.dataPath + "/Plugins/";
 
             LoadAll();
         }
@@ -109,7 +111,7 @@ namespace fts_plugin_loader
                         var pluginName = typeAttribute.pluginName;
                         NativePlugin plugin = null;
                         if (!_loadedPlugins.TryGetValue(pluginName, out plugin)) {
-                            var pluginPath = PATH + pluginName + EXT;
+                            var pluginPath = _path + pluginName + EXT;
                             var pluginHandle = SystemLibrary.LoadLibrary(pluginPath);
                             if (pluginHandle == IntPtr.Zero)
                                 throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
@@ -211,8 +213,9 @@ namespace fts_plugin_loader
         public IntPtr GetFunction(string functionName) {
             return SystemLibrary.GetProcAddress(handle, functionName);
         }
-    }
 
+        //void test() { }
+    }
 
     // ------------------------------------------------------------------------
     // Attribute for Plugin APIs
@@ -245,4 +248,4 @@ namespace fts_plugin_loader
         }
     }
 
-} // namespace fts_plugin_loader
+} // namespace fts
