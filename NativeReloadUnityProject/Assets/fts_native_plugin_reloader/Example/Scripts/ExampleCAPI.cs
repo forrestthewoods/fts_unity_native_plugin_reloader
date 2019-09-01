@@ -10,17 +10,16 @@ using fts;
 extern "C" 
 {
 	__declspec(dllexport) int simple_func();
-    __declspec(dllexport) float sum(float a, float b);
-    __declspec(dllexport) int string_length(const char* s);
+	__declspec(dllexport) float sum(float a, float b);
+	__declspec(dllexport) int string_length(const char* s);
 
-    struct SimpleStruct
-    {
-        int a;
-        float b;
-        bool c;
-    };
-    __declspec(dllexport) double RecvStruct(SimpleStruct const* ss);
-    __declspec(dllexport) SimpleStruct SendStruct();
+	struct SimpleStruct {
+		int a;
+		float b;
+		bool c;
+	};
+	__declspec(dllexport) double send_struct(SimpleStruct const* ss);
+	__declspec(dllexport) SimpleStruct recv_struct();
 }
 */
 
@@ -31,7 +30,19 @@ extern "C"
 public static class FooPlugin_PInvoke
 {
     [DllImport("cpp_example_dll", EntryPoint = "simple_func")]
-    extern static public int test_func();
+    extern static public int simpleFunc();
+
+    [DllImport("cpp_example_dll", EntryPoint = "sum")]
+    extern static public float sum(float a, float b);
+    
+    [DllImport("cpp_example_dll", EntryPoint = "string_length")]
+    extern static public int stringLength([MarshalAs(UnmanagedType.LPStr)]string s);
+    
+    [DllImport("cpp_example_dll", EntryPoint = "send_struct")]
+    extern static public double sendStruct(ref SimpleStruct ss);
+    
+    [DllImport("cpp_example_dll", EntryPoint = "recv_struct")]
+    extern static public SimpleStruct recvStruct();
 }
 
 
@@ -64,6 +75,10 @@ public static class FooPluginAPI_Auto
     public delegate SimpleStruct RecvStruct();
 }
 
+
+// ------------------------------------------------------------------------
+// C Structs
+// ------------------------------------------------------------------------
 [StructLayout(LayoutKind.Sequential)]
 public struct SimpleStruct {
     public int a;
