@@ -18,68 +18,40 @@ namespace fts
     // ------------------------------------------------------------------------
     static class SystemLibrary
     {
+        
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+
+        public const string LIB_EXT = ".dll"; 
+
         public static IntPtr LoadLib(string fileName)
         {
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+
             IntPtr hLib = LoadLibrary(fileName);
             var errID = GetLastError();
             if (hLib == IntPtr.Zero) {
                 Debug.LogError(string.Format("Failed to load library [{0}]. Err: [{1}]", fileName, errID));
             }
             return hLib;
-#else            
-            const int RTLD_NOW = 2;
-            IntPtr hLib = dlopen(fileName, RTLD_NOW);
-            var errPtr = dlerror();
-            if (errPtr != IntPtr.Zero) {
-                Debug.LogError(Marshal.PtrToStringAnsi(errPtr));
-            }
-            else
-            {
-                Debug.Log($"Loaded {fileName}");
-            }
-            return hLib;
-#endif
         }
-
+        
         public static void FreeLib(IntPtr hLib)
         {
             if (hLib == IntPtr.Zero)
                 return;
             
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
             FreeLibrary(hLib);
-#else
-            dlclose(hLib);
-#endif
-            return;
         }
-
+        
         public static IntPtr GetAddress(IntPtr hLib, string fnName)
         {
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
             IntPtr fnPtr = GetProcAddress(hLib, fnName);
             var errID = GetLastError();
             if (fnPtr == IntPtr.Zero) {
                 Debug.LogError(string.Format("Failed to find function [{0}] in library [{1}]. Err: [{2}]", fnName, fileName, errID));
             }
             return fnPtr;
-            
-#else
-            IntPtr fnPtr = dlsym(hLib, fnName);
-            var errPtr = dlerror();
-            if (errPtr != IntPtr.Zero) {
-                Debug.LogError(Marshal.PtrToStringAnsi(errPtr));
-            }
-            else
-            {
-                Debug.Log($"Found symbol {fnName}");
-            }
-            return fnPtr;
-#endif
         }
         
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
         static private extern IntPtr LoadLibrary(string lpFileName);
 
@@ -92,7 +64,47 @@ namespace fts
 
         [DllImport("kernel32.dll")]
         static private extern uint GetLastError();
-#else
+        
+#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+        
+        public const string LIB_EXT = ".dylib"; 
+        
+        public static IntPtr LoadLib(string fileName)
+        {
+            const int RTLD_NOW = 2;
+            IntPtr hLib = dlopen(fileName, RTLD_NOW);
+            var errPtr = dlerror();
+            if (errPtr != IntPtr.Zero) {
+                Debug.LogError(Marshal.PtrToStringAnsi(errPtr));
+            }
+            else
+            {
+                Debug.Log($"Loaded {fileName}");
+            }
+            return hLib;
+        }
+        
+        public static void FreeLib(IntPtr hLib)
+        {
+            if (hLib == IntPtr.Zero)
+                return;
+            dlclose(hLib);
+        }
+        
+        public static IntPtr GetAddress(IntPtr hLib, string fnName)
+        {
+            IntPtr fnPtr = dlsym(hLib, fnName);
+            var errPtr = dlerror();
+            if (errPtr != IntPtr.Zero) {
+                Debug.LogError(Marshal.PtrToStringAnsi(errPtr));
+            }
+            else
+            {
+                Debug.Log($"Found symbol {fnName}");
+            }
+            return fnPtr;
+        }
+        
         [DllImport ("__Internal")]
         private static extern IntPtr dlopen(String fileName, int flags);
 
@@ -104,6 +116,11 @@ namespace fts
 
         [DllImport ("__Internal")]
         private static extern IntPtr dlerror();
+        
+#else
+
+    #error Unsupported platform.
+
 #endif
     }
 
@@ -114,12 +131,6 @@ namespace fts
     [System.Serializable]
     public class NativePluginLoader : MonoBehaviour, ISerializationCallbackReceiver
     {
-        // Constants
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-        const string EXT = ".dll"; 
-#else
-        const string EXT = ".dylib"; 
-#endif
         // Static fields
         static NativePluginLoader _singleton;
 
@@ -193,7 +204,7 @@ namespace fts
                         var pluginName = typeAttribute.pluginName;
                         IntPtr pluginHandle = IntPtr.Zero;
                         if (!_loadedPlugins.TryGetValue(pluginName, out pluginHandle)) {
-                            var pluginPath = _path + pluginName + EXT;
+                            var pluginPath = _path + pluginName + SystemLibrary.LIB_EXT;
                             pluginHandle = SystemLibrary.LoadLib(pluginPath);
                             if (pluginHandle == IntPtr.Zero)
                                 throw new System.Exception("Failed to load plugin [" + pluginPath + "]");
