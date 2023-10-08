@@ -60,7 +60,7 @@ Next, it loops over all public static fields with the `PluginFunctionAttr` attri
 The syntax for calling the delegates is identical to using PInvoke. If performance is a concern you can provide a dynamic version inside `#if UNITY_EDITOR` and rely on PInvoke for standalone builds.
 
 ## Platforms
-This currently only supports Windows. Supporting other platforms should be trivial. Pull requests welcome.
+This currently supports Windows and MacOS. Supporting other platforms should be trivial. Pull requests welcome.
 
 ## License
 The entire repo is dual-licensed under both MIT License and Unlicense.
